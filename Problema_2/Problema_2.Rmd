@@ -1,0 +1,148 @@
+---
+title: "Problema_1"
+author: "anonimo"
+date: '2024-07-13'
+output:
+  html_document: default
+---
+
+Se desea verificar los estandares de calidad de la data
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(rio)
+library(readr)
+
+data <- read_csv("base_envíos.csv")
+data_copia <- data
+```
+
+
+
+Caracteristicas Inherentes:
+
+Exactitud:
+```{r, echo=FALSE}
+# Consideramos los id negativos como positivo (error al pasar los datos)
+data_copia <- data_copia %>% 
+  mutate(id_envío = abs(id_envío))
+
+#Para verificar q sean unicos (sino se le suma 1 sucesivamente)
+# Funcion para asegurarse de que los IDs sean unicos
+hacer_id_unico <- function(ids) {
+  ids_unico <- abs(ids)
+  for (i in seq_along(ids_unico)) {
+    while (sum(ids_unico[i] == ids_unico) > 1) {
+      ids_unico[i] <- ids_unico[i] + 1
+    }
+  }
+  return(ids_unico)
+}
+# Aplicar para que todos los ids sean distintos
+data_copia <- data_copia %>%
+  mutate(id_envío = hacer_id_unico(id_envío))
+```
+
+Se Aplico un criterio de volver positivos a los ids y sumarles +1 
+```{r, echo=FALSE}
+data_copia %>% head(10)
+```
+
+
+Completitud:
+```{r, echo=FALSE}
+#En las zonas de origen los NA las modificamos
+data_copia <- data_copia %>%
+  mutate(origen = if_else(is.na(origen), "desconocida", origen))   
+
+#Las zonas de destino NA tambien las modificamos
+data_copia <- data_copia %>%
+  mutate(destino = if_else(is.na(destino), "desconocido", destino))
+```
+
+Se aplico un criterior de marcar a las zonas de origen y de destino NA como desconocidas
+```{r, echo=FALSE}
+data_copia %>% tail(10)
+```
+
+
+Consistencia:
+```{r, echo=FALSE}
+#Modificamos la fecha para que todas tengan el formato adecuado
+data_copia <- data_copia %>% 
+  mutate(fecha_envío = if_else(fecha_envío == "31-12-2023", "2023-12-31", fecha_envío))
+
+#La fecha de entrega no esta en el formato adecuado (fecha base: 02-01-1970)
+#Funcion para convertir la fecha
+convertir_a_fecha <- function(dias_desde_base, fecha_base = "1970-01-02") {
+  fecha_base <- as.Date(fecha_base)
+  fechas <- fecha_base + dias_desde_base
+  fechas <- format(fechas, "%Y-%m-%d")
+  return(fechas)
+}
+
+#Aplicando la funcion a la columna de la fecha de entrega
+data_copia <- data_copia %>%
+  mutate(fecha_entrega = convertir_a_fecha(fecha_entrega))
+```
+
+Se decidio por un criterio de adecuado de fecha YYYY-MM-DD
+```{r, echo=FALSE}
+data_copia %>% tail(10)
+```
+
+
+Criterios de Calidad del mismo problema
+```{r, echo=FALSE}
+# Agregar una nueva columna con la duracion del envio
+data_copia <- data_copia %>%
+  mutate(duracion_envío = abs(as.integer(difftime(fecha_entrega, fecha_envío, units = "days"))))
+
+#Ordenar la tabla segun el "origen"
+data_order <- data_copia %>% arrange(origen)
+
+# Duracion promedio del envio por region
+promedio_duracion_por_origen <- data_copia %>%
+  group_by(origen) %>%
+  summarise(promedio_duracion_envio = mean(duracion_envío, na.rm = TRUE))
+```
+
+Se aplico una cariable que mide el tiempo de envio
+```{r, echo=FALSE}
+data_copia %>% tail(10)
+```
+
+Se ordeno segun la variable origen
+```{r, echo=FALSE}
+data_order %>% head(10)
+```
+
+Se saco un promedio de envio por region
+```{r, echo=FALSE}
+promedio_duracion_por_origen %>% tail(10)
+```
+
+Caracteristicas dependientes del sistema:
+
+Disponibilidad:
+Estara publico en github
+
+Recuperabilidad:
+Se creo varias copias de respaldo
+
+```{r, echo=FALSE}
+data_respaldp <- data_copia
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
